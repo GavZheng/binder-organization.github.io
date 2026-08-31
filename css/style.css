@@ -73,6 +73,10 @@ body {
     margin: 0 auto;
     padding: 4rem 1rem;
     flex: 1;
+    /* 必须显式给宽度：body 是列向 flex 容器，交叉轴（水平）上的 auto 边距会让
+       align-items: stretch 失效，section 于是按内容收缩，
+       每个区块宽度随文字长短变化，套上矩形后左右就对不齐了。 */
+    width: 100%;
 }
 
 .section h2 {
@@ -138,6 +142,13 @@ body {
     margin-bottom: 1rem;
 }
 
+/* 成员介绍词条里用 \n 分隔正文与邮箱，setLanguage 走 textContent 赋值，
+   需要 pre-line 才会把换行渲染成换行。只挂在 .member-bio 上，
+   免得带嵌套标签的段落把源码里的换行也照出来。 */
+.member-bio {
+    white-space: pre-line;
+}
+
 /* 导航栏样式 */
 .navbar {
     background: var(--navbar-bg);
@@ -146,7 +157,9 @@ body {
     top: 0;
     z-index: 250;
     box-shadow: 0 1px 0 rgba(0, 0, 0, 0.05);
-    transition: all 0.3s ease;
+    /* 只过渡真正会变化的属性：all 会把主题切换等无关属性一起纳入动画，
+       收缩过程中容易表现为整条导航栏抖动。 */
+    transition: padding 0.3s ease, box-shadow 0.3s ease;
 }
 
 .navbar.shrink {
@@ -317,13 +330,40 @@ body {
     }
 }
 
+/* 首页/产品/文档的特性区块：与文章页同一套版式，每块都用圆角矩形包裹。
+   .section 默认 flex: 1 会按视口剩余高度把每个区块撑开，导致块与块之间的
+   上下间距随窗口高度变化、看起来没对齐；这里改成按内容高度排列并用固定内边距，
+   矩形宽度与文章页列表一样受 max-width 900px 约束，左右边缘自然对齐。 */
+.feature-section {
+    flex: none;
+    padding: 0.75rem 1rem;
+}
+
+.page-banner + .feature-section {
+    padding-top: 3rem;
+}
+
+.feature-section:last-of-type {
+    padding-bottom: 3rem;
+}
+
+.feature-section .feature-layout {
+    background: var(--light-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 2rem 2.5rem;
+}
+
 /* 通用左右布局：左图，右上文本，右下链接 */
 .feature-layout {
     display: grid;
     grid-template-columns: 360px 1fr;
     gap: 3rem;
     align-items: center;
-    width: 900px;
+    /* 必须是可收缩的流式宽度：写死 width 时，视口比它窄就会整块越出右边界，
+       页面随之能往右滚出空白，居中内容也看起来偏左。 */
+    width: 100%;
+    max-width: 900px;
     margin: 0 auto;
 }
 
@@ -356,11 +396,12 @@ body {
     line-height: 1.8;
     color: var(--feature-text-color);
     display: -webkit-box;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
     -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    /* 高度钉成「行数 × 行高」：盒子比行数高时，火狐会把裁断剩下的半行画到下一行，
+       省略号就落在倒数第二行。标准 line-clamp 在火狐 152 不生效，这里只留 -webkit 前缀版本。 */
+    max-height: calc(2 * 1.8em);
     overflow: hidden;
-    text-overflow: ellipsis;
 }
 
 .feature-layout .feature-text .feature-link {
@@ -440,12 +481,21 @@ body {
         text-align: center;
     }
 
+    /* 窄窗口的矩形内边距收窄，避免把 400px 的可用宽度吃掉太多 */
+    .feature-section .feature-layout {
+        padding: 1.5rem 1.25rem;
+    }
+
+    /* 单列时图片盒子宽度受 max-width 限制，必须显式 justify-self: center，
+       否则火狐按 stretch 对齐会把图片贴在列起点而不是居中。 */
     .feature-layout .feature-img {
         width: 100%;
         max-width: 280px;
         height: auto;
         aspect-ratio: 3 / 2;
-        margin: 0 auto;
+        margin-left: auto;
+        margin-right: auto;
+        justify-self: center;
     }
 
     .feature-layout .feature-text {
@@ -572,5 +622,185 @@ body.menu-open {
     .nav-actions {
         flex-direction: column;
         align-items: center;
+    }
+}
+
+/* 文章列表页：纵向排列的圆角矩形卡片 */
+.article-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.article-card {
+    display: flex;
+    flex-direction: column;
+    height: 300px;
+    padding: 1.5rem 1.75rem;
+    background: var(--light-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+/* 标题在矩形左上方，链接只包住文字本身，卡片空白处不响应点击 */
+.article-card-title {
+    align-self: flex-start;
+    font-size: 1.35rem;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--primary-color);
+    text-decoration: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+}
+
+.article-card-title:hover {
+    color: var(--accent-color);
+    text-decoration: underline;
+}
+
+/* 标题下方的灰色小字：发表时间与作者并排 */
+.article-card-meta {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    margin-top: 0.35rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.article-card-separator {
+    opacity: 0.6;
+}
+
+/* 摘要吃掉卡片剩下的下半部分，装不下的部分裁成省略号。
+   max-height 必须精确等于「clamp 行数 × 行高」：盒子被 flex 撑得更高时，
+   火狐会把裁断后剩下的半行（尤其是长 URL 这种不可断词）画到下一行，
+   省略号就出现在倒数第二行。去掉标准 line-clamp 与 text-overflow，
+   它们在火狐 152 上分别不生效与不参与本裁剪。 */
+.article-card-preview {
+    flex: 1;
+    min-height: 0;
+    margin-top: 1rem;
+    font-size: 1rem;
+    line-height: 1.8;
+    color: var(--feature-text-color);
+    white-space: pre-line;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 6;
+    max-height: calc(6 * 1.8em);
+    overflow: hidden;
+}
+
+.article-notice {
+    padding: 2rem 0;
+    text-align: center;
+    font-size: 1.05rem;
+    color: var(--text-secondary);
+}
+
+/* 正文页：顶部横幅与列表页完全一致，文章自身内容装进一个比页面窄的圆角矩形 */
+.article-box {
+    display: flex;
+    flex-direction: column;
+    max-width: 860px;
+    min-height: 60vh;
+    margin: 0 auto;
+    padding: 2.75rem 3rem;
+    background: var(--light-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 18px;
+}
+
+/* 标题左对齐并清掉全局 .section h2 的居中与 3rem 下边距；
+   选择器必须带上 .article-box 才能压过 .section h2 的权重。 */
+.article-box .article-box-title {
+    font-size: 2.2rem;
+    font-weight: 700;
+    line-height: 1.4;
+    color: var(--primary-color);
+    text-align: center;
+    margin: 0;
+}
+
+/* 作者 - 发表时间：居中、粗体、灰字；灰色再往正文色提一档保证可见度 */
+.article-box-meta {
+    display: flex;
+    justify-content: center;
+    align-items: baseline;
+    gap: 0.75rem;
+    margin-top: 1.25rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    color: color-mix(in srgb, var(--text-secondary) 55%, var(--text-color));
+}
+
+.article-box-meta-separator {
+    opacity: 0.6;
+}
+
+/* header 左对齐；与相邻部分之间明显留白，部分内部行距不变 */
+.article-box-header {
+    margin-top: 3.5rem;
+    font-size: 1.2rem;
+    line-height: 1.9;
+    color: var(--text-color);
+    text-align: left;
+    white-space: pre-line;
+}
+
+/* content 比其余层级再往里收一点，不贴着矩形边缘 */
+.article-box-content {
+    flex: 1;
+    margin-top: 3.5rem;
+    padding: 0 1.25rem;
+    font-size: 1.15rem;
+    line-height: 1.95;
+    color: var(--feature-text-color);
+}
+
+.article-box-content p + p {
+    margin-top: 1.25rem;
+}
+
+/* footer 在 content 下方、矩形右下角 */
+.article-box-footer {
+    margin-top: 4rem;
+    font-size: 1.05rem;
+    line-height: 1.8;
+    color: var(--text-secondary);
+    color: color-mix(in srgb, var(--text-secondary) 55%, var(--text-color));
+    text-align: right;
+}
+
+@media (max-width: 960px) {
+    .article-card {
+        height: 280px;
+        padding: 1.25rem 1.25rem;
+    }
+
+    .article-card-preview {
+        -webkit-line-clamp: 5;
+        max-height: calc(5 * 1.8em);
+    }
+
+    .article-box {
+        padding: 1.75rem 1.25rem;
+    }
+
+    .article-box .article-box-title {
+        font-size: 1.75rem;
+    }
+
+    /* 窄窗口本身没多少横向空间，正文不再额外内缩 */
+    .article-box-content {
+        padding: 0;
     }
 }

@@ -1,0 +1,61 @@
+{
+  "info": ["v1", "2026-08-31"],
+  "author": {
+    "zh-CN": [
+      "Cheple Bob"
+    ],
+    "en-US": [
+      "Cheple Bob"
+    ]
+  },
+  "post_time": {
+    "zh-CN": [
+      "2026年8月31日"
+    ],
+    "en-US": [
+      "August 31, 2026"
+    ]
+  },
+  "title": {
+    "zh-CN": [
+      "迁移公告"
+    ],
+    "en-US": [
+      "Migration Notice"
+    ]
+  },
+  "header": {
+    "zh-CN": [
+      "致所有必达开发者："
+    ],
+    "en-US": [
+      "Dear Binder Developers,"
+    ]
+  },
+  "content": {
+    "zh-CN": [
+      "此文章用于声明必达通知的去向。",
+      "从2026.9.1开始，我们将全面启用官网文章板块来进行通知，原先的binder-notice-board仓库将被归档并导至此处。",
+      "文章板块兼具宣传、通知两大职责，会在未来发布通知、产品发布、各类总结等内容。",
+      "同时，文章板块允许开发者发表自己的内容，只需在官网仓库提出PR即可。",
+      "请各位开发者尽快适应新模式，并发表你的想法。"
+    ],
+    "en-US": [
+      "This article declares the destination of Binder notices.",
+      "Starting from 2026.9.1, we will fully enable the website article section for notifications, archiving the binder-notice-board repository and migrating it here.",
+      "The article section combines promotional and notification responsibilities, and will publish notifications, product releases, and various summaries in the future.",
+      "At the same time, the article section allows developers to publish their own content, just submit a PR to the official website repository.",
+      "Please adapt to the new model as soon as possible and share your thoughts."
+    ]
+  },
+  "footer": {
+    "zh-CN": [
+      "Cheple Bob",
+      "2026.8.30"
+    ],
+    "en-US": [
+      "Cheple Bob",
+      "2026.8.30"
+    ]
+  }
+}

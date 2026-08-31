@@ -1,0 +1,59 @@
+name: Auto-update article manifest
+
+# When articles are added, removed, or modified under assets/articles, regenerate
+# the manifest assets/articles/index.json that js/article-loader.js reads.
+# On the default branch the change is committed back to the repository;
+# on other branches (for PRs) we only verify the manifest is up-to-date — if not,
+# the author must run the script locally (fork PRs do not have write access).
+on:
+  push:
+    paths:
+      - "assets/articles/**"
+      - "tools/build_article_index.py"
+      - ".github/workflows/articles-index.yml"
+  pull_request:
+    paths:
+      - "assets/articles/**"
+      - "tools/build_article_index.py"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-article-index:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Generate article manifest
+        run: python tools/build_article_index.py --verbose
+
+      - name: Commit manifest changes to default branch
+        if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        run: |
+          if [ -z "$(git status --porcelain -- assets/articles/index.json)" ]; then
+            echo "Manifest unchanged, nothing to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41981518+github-actions[bot]@users.noreply.github.com"
+          git add -- assets/articles/index.json
+          git commit -m "chore: auto-update article manifest [skip ci]"
+          git push
+
+      - name: Verify manifest is up-to-date on branch
+        if: github.ref != format('refs/heads/{0}', github.event.repository.default_branch)
+        run: |
+          if ! git diff --quiet -- assets/articles/index.json; then
+            echo "::error::Manifest is out of date — run python3 tools/build_article_index.py locally and commit index.json"
+            git diff -- assets/articles/index.json
+            exit 1
+          fi
+          echo "Manifest is up to date"

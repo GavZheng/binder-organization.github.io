@@ -1,18 +1,22 @@
 var i18n = {
   zh: {
     "page.title.home": "首页 - 必达",
+    "page.title.articles": "文章 - 必达",
     "page.title.products": "产品 - 必达",
     "page.title.docs": "文档 - 必达",
     "page.title.contact": "联系 - 必达",
     "page.title.about": "关于 - 必达",
     "nav.home": "首页",
     "nav.site.name": "必达",
+    "nav.articles": "文章",
     "nav.products": "产品",
     "nav.docs": "文档",
     "nav.contact": "联系",
     "nav.about": "关于",
     "banner.title": "必达",
     "banner.subtitle": "打开令你惊艳的世界。",
+    "banner.articles.title": "文章",
+    "banner.articles.subtitle": "了解我们的最新消息。",
     "banner.products.title": "产品",
     "banner.products.subtitle": "探索我们的创新产品。",
     "banner.docs.title": "文档",
@@ -21,7 +25,6 @@ var i18n = {
     "banner.contact.subtitle": "与我们进行交流。",
     "banner.about.title": "关于",
     "banner.about.subtitle": "谈谈我们的故事。",
-    "contact.email.label": "邮箱",
     "contact.email.title": "电子邮件",
     "contact.email.desc": "邮箱地址：binder2025@outlook.com",
     "contact.github.title": "GitHub 组织",
@@ -30,12 +33,13 @@ var i18n = {
     "about.github.members": "成员",
     "about.github.link": "查看个人资料 →",
     "about.github.cheplebob30":
-      "必达联合创始人，负责规划必达发展方向并推进图形化项目开发，开发项目有Rust Constructor，靶向载体等。",
+      "必达联合创始人，负责规划必达发展方向并开发客户端，开发项目有白桦客户端。\ncheple_bob@outlook.com",
     "about.github.gavzheng":
-      "必达联合创始人，负责命令行工具开发与宣传，开发经验丰富，与ChepleBob30进行了大量研讨，开发项目有梧桐。",
-    "about.github.chaijun0228": "必达成员，参与了本项目的开发。",
-    "about.github.vincent-z-yu": "必达成员。",
+      "必达联合创始人，负责命令行工具开发与宣传，开发经验丰富，开发项目有白桦服务端。\ngav.zheng@outlook.com",
     "footer.copyright": "© 2026 必达. 保留所有权利。",
+    "home.feature.articles.title": "文章",
+    "home.feature.articles.desc": "查找关键信息，浏览最新产品。",
+    "home.feature.articles.link": "查看 →",
     "home.feature.products.title": "产品",
     "home.feature.products.desc": "查看我们的实用项目，并下载你需要的部分。",
     "home.feature.products.link": "查看 →",
@@ -62,50 +66,58 @@ var i18n = {
     "home.feature.docs.wutong.desc": "了解如何为梧桐作贡献。",
     "home.feature.docs.wutong.link": "查看 →",
     "home.feature.baihua.title": "白桦服务端",
+    "home.feature.baihua.client.title": "白桦客户端",
     "home.feature.baihua.desc": "为开发人员定制的团队沟通工具。",
     "home.feature.docs.baihua.title": "白桦服务端-文档",
     "home.feature.docs.baihua.desc": "在Web上查看应用白桦的实用指南。",
     "home.feature.docs.baihua.link": "查看 →",
+    "articles.empty": "暂无文章。",
+    "articles.loadFailed": "文章加载失败，请通过 HTTP 访问本站。",
+    "articles.notFound": "未找到该文章。",
   },
   en: {
     "page.title.home": "Home - Binder",
+    "page.title.articles": "Articles - Binder",
     "page.title.products": "Products - Binder",
     "page.title.docs": "Docs - Binder",
     "page.title.contact": "Contact - Binder",
     "page.title.about": "About - Binder",
     "nav.home": "Home",
     "nav.site.name": "Binder",
+    "nav.articles": "Articles",
     "nav.products": "Products",
     "nav.docs": "Docs",
     "nav.contact": "Contact",
     "nav.about": "About",
     "banner.title": "Binder",
     "banner.subtitle": "Open a world that amazes you.",
+    "banner.articles.title": "Articles",
+    "banner.articles.subtitle": "Read our latest news.",
     "banner.products.title": "Products",
     "banner.products.subtitle": "Explore our innovative products.",
     "banner.docs.title": "Docs",
     "banner.docs.subtitle":
       "Start here to view detailed technical docs and guides.",
     "banner.contact.title": "Contact",
-    "banner.contact.subtitle": "Communicate with us.",
+    "banner.contact.subtitle": "Get in touch with us.",
     "banner.about.title": "About",
-    "banner.about.subtitle": "Talk about our story.",
-    "contact.email.label": "Email",
+    "banner.about.subtitle": "The story behind Binder.",
     "contact.email.title": "Email",
     "contact.email.desc": "Email address: binder2025@outlook.com",
     "contact.github.title": "GitHub Organization",
     "contact.github.desc": "Visit our GitHub organization: Binder-必达.",
     "contact.github.link": "View →",
-    "about.github.link": "View Profile →",
     "about.github.members": "Members",
+    "about.github.link": "View Profile →",
     "about.github.cheplebob30":
-      "Co-founder of Binder, responsible for planning Binder's development direction and advancing graphical project development. Developed projects include Rust Constructor, Targeted Vector, etc.",
+      "Co-founder of Binder, responsible for planning the direction of Binder and developing the client. Developed project: Baihua Client.\ncheple_bob@outlook.com",
     "about.github.gavzheng":
-      "Co-founder of Binder, responsible for command-line tool development and promotion. Rich development experience, conducted extensive discussions with ChepleBob30. Developed project: Wutong.",
-    "about.github.chaijun0228":
-      "Binder member, participated in the development of this project.",
-    "about.github.vincent-z-yu": "Binder member.",
+      "Co-founder of Binder, responsible for developing and promoting command-line tools, with rich development experience. Developed project: Baihua Server.\ngav.zheng@outlook.com",
     "footer.copyright": "© 2026 Binder. All rights reserved.",
+    "home.feature.articles.title": "Articles",
+    "home.feature.articles.desc":
+      "Find the key information and browse the latest products.",
+    "home.feature.articles.link": "View →",
     "home.feature.products.title": "Products",
     "home.feature.products.desc":
       "Check out our practical projects and download what you need.",
@@ -134,10 +146,14 @@ var i18n = {
     "home.feature.docs.wutong.desc": "Learn how to contribute to Wutong.",
     "home.feature.docs.wutong.link": "View →",
     "home.feature.baihua.title": "Baihua Server",
+    "home.feature.baihua.client.title": "Baihua Client",
     "home.feature.baihua.desc": "A team communication tool customized for developers.",
     "home.feature.docs.baihua.title": "Baihua Server Docs",
     "home.feature.docs.baihua.desc": "A practical guide to using Baihua on the web.",
     "home.feature.docs.baihua.link": "View →",
+    "articles.empty": "No articles yet.",
+    "articles.loadFailed": "Failed to load articles. Please visit this site over HTTP.",
+    "articles.notFound": "Article not found.",
   },
 };
 
@@ -186,6 +202,10 @@ function setLanguage(lang) {
   document.querySelectorAll(".lang-btn").forEach(function (btn) {
     btn.classList.toggle("active", btn.getAttribute("data-lang") === lang);
   });
+
+  // 由脚本渲染出来的内容（文章列表与正文）不在 data-i18n 体系内，
+  // 靠这个事件通知它们按新语言重绘。
+  document.dispatchEvent(new CustomEvent("binder:language-change", { detail: { lang: lang } }));
 }
 
 function initI18n() {

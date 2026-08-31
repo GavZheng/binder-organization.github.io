@@ -6,26 +6,21 @@ function initApp() {
     backdrop.className = 'nav-backdrop';
     document.body.appendChild(backdrop);
 
-    var animating = false;
-
+    // The drawer open/close is fully handled by CSS transitions: they interpolate from the
+     // current pixel position, so no "animation in progress" mutex flag is needed — that flag
+     // swallows clicks during the animation, causing a stale-then-jump effect that looks like jitter.
     function openMenu() {
-        if (animating) return;
-        animating = true;
         hamburger.classList.add('active');
         navLinks.classList.add('open');
         backdrop.classList.add('active');
         document.body.classList.add('menu-open');
-        setTimeout(function () { animating = false; }, 400);
     }
 
     function closeMenu() {
-        if (animating) return;
-        animating = true;
         hamburger.classList.remove('active');
         navLinks.classList.remove('open');
         backdrop.classList.remove('active');
         document.body.classList.remove('menu-open');
-        setTimeout(function () { animating = false; }, 400);
     }
 
     if (hamburger && navLinks) {
@@ -43,42 +38,95 @@ function initApp() {
         });
 
         var links = document.querySelectorAll('.nav-link');
-        for (var i = 0; i < links.length; i++) {
-            links[i].addEventListener('click', closeMenu);
+        for (var linkIndex = 0; linkIndex < links.length; linkIndex = linkIndex + 1) {
+            links[linkIndex].addEventListener('click', closeMenu);
         }
 
-        var wasMobile = window.innerWidth <= 960;
+        var mobileBreakpoint = 960;
+        var wasMobile = window.innerWidth <= mobileBreakpoint;
+        var resizeScheduled = false;
+
+        function resolveResponsiveNavigation() {
+            resizeScheduled = false;
+            var isMobile = window.innerWidth <= mobileBreakpoint;
+            if (isMobile === wasMobile) {
+                return;
+            }
+            wasMobile = isMobile;
+            // If the drawer is open when crossing a breakpoint it would cover the body,
+             // so force it closed; disable transitions to avoid a half-open intermediate frame.
+            navLinks.style.transition = 'none';
+            closeMenu();
+            requestAnimationFrame(function () {
+                requestAnimationFrame(function () {
+                    navLinks.style.transition = '';
+                });
+            });
+        }
 
         window.addEventListener('resize', function () {
-            var isMobile = window.innerWidth <= 960;
-
-            if (wasMobile && !isMobile) {
-                closeMenu();
-            } else if (!wasMobile && isMobile) {
-                navLinks.style.transition = 'none';
-                requestAnimationFrame(function () {
-                    requestAnimationFrame(function () {
-                        navLinks.style.transition = '';
-                    });
-                });
+            if (resizeScheduled) {
+                return;
             }
-
-            wasMobile = isMobile;
-        });
+            resizeScheduled = true;
+            requestAnimationFrame(resolveResponsiveNavigation);
+        }, { passive: true });
     }
 
-    var lastScrollTop = 0;
     var navbar = document.querySelector('.navbar');
+    var shrinkTopLimit = 50;
+    var directionFlipThreshold = 12;
+    var directionBaselineTop = window.pageYOffset || document.documentElement.scrollTop;
+    var scrollScheduled = false;
+    var rebaselineAfterFlip = false;
+
+    function readScrollTop() {
+        return window.pageYOffset || document.documentElement.scrollTop;
+    }
+
+    function applyShrinkState(nextShrunk) {
+        if (navbar.classList.contains('shrink') !== nextShrunk) {
+            rebaselineAfterFlip = true;
+            navbar.classList.toggle('shrink', nextShrunk);
+        }
+        directionBaselineTop = readScrollTop();
+    }
+
+    function resolveNavbarShrink() {
+        scrollScheduled = false;
+        var currentTop = readScrollTop();
+
+        // When the shrink state changes, the navbar shrinks by 1rem; at the bottom of the
+         // page the browser clamps scrollTop back once and fires another scroll event.  That
+         // event does not represent user intent — use it only to re-baseline, otherwise
+         // shrink and expand would cross-trigger at the bottom, producing jitter.
+        if (rebaselineAfterFlip) {
+            rebaselineAfterFlip = false;
+            directionBaselineTop = currentTop;
+            return;
+        }
+
+        var displacement = currentTop - directionBaselineTop;
+        if (currentTop <= shrinkTopLimit) {
+            applyShrinkState(false);
+            return;
+        }
+        // Displacement accumulates from the last decision point; a single 1-2 px difference
+         // is not enough to flip state, so inertial scroll micro-bounces no longer toggle it.
+        if (displacement >= directionFlipThreshold) {
+            applyShrinkState(true);
+        } else if (displacement <= -directionFlipThreshold) {
+            applyShrinkState(false);
+        }
+    }
 
     window.addEventListener('scroll', function () {
-        var scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-        if (scrollTop > lastScrollTop && scrollTop > 50) {
-            navbar.classList.add('shrink');
-        } else {
-            navbar.classList.remove('shrink');
+        if (scrollScheduled) {
+            return;
         }
-        lastScrollTop = scrollTop;
-    });
+        scrollScheduled = true;
+        window.requestAnimationFrame(resolveNavbarShrink);
+    }, { passive: true });
 
     var themeToggle = document.getElementById('theme-toggle');
     if (themeToggle) {

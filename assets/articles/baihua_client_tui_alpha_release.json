@@ -1,0 +1,54 @@
+{
+  "info": ["v1", "2026-08-31"],
+  "author": {
+    "zh-CN": [
+      "Cheple Bob"
+    ],
+    "en-US": [
+      "Cheple Bob"
+    ]
+  },
+  "post_time": {
+    "zh-CN": [
+      "2026年8月31日"
+    ],
+    "en-US": [
+      "August 31, 2026"
+    ]
+  },
+  "title": {
+    "zh-CN": [
+      "白桦客户端TUI测试版现已发布"
+    ],
+    "en-US": [
+      "The beta version of the Baihua Client TUI has now been released"
+    ]
+  },
+  "content": {
+    "zh-CN": [
+      "白桦客户端 - TUI版本",
+      "这是一个即时通讯项目，目前已发布测试版。",
+      "项目特色：",
+      "自主掌控 - 服务端采用分布式服务器架构，你可以自行部署服务器，与合作者一起开发项目。",
+      "操作顺手 - 使用逻辑近似coding agent，编程沟通两不误。",
+      "尊重隐私 - JsonWebToken登录 + 端对端加密，全方位保护信息安全。",
+      "高效快捷 - 所有功能全部可在终端中进行配置，无需多开软件即可完成协作。",
+      "无缝衔接 - 参照GUI聊天软件构建，无需担忧学习成本。",
+      "目前该项目正在开发，正式版很快就会发布。"
+    ],
+    "en-US": [
+      "Baihua Client - TUI Version",
+      "This is an instant messaging project and an alpha version has been released.",
+      "Project Features:",
+      "Self-Management - The server adopts a distributed server architecture.",
+      "You can deploy the server by yourself and work with collaborators to develop the project.",
+      "Easy Operation - Utilizing logic similar to coding agents, it enables both programming and communication.",
+      "Privacy Respect - JsonWebToken login + end-to-end encryption, providing comprehensive protection of information security.",
+      "Efficient and Fast - All functions can be configured directly on the terminal.",
+      "You can complete collaboration without opening multiple software.",
+      "Seamless Integration - Based on GUI chat software, there is no need to worry about learning costs.",
+      "Currently, this project is under development.",
+      "The official version will be released soon."
+    ]
+  }
+}
