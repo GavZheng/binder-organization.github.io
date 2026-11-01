@@ -156,7 +156,12 @@ def rewrite_markdown_images(markdown, source_path, article_dir, slug, language, 
                 copy_jobs.append((image_path, destination))
             return f"![{alt_text}](assets/articles/{image_names[key]})"
 
-        rewritten_lines.append(IMAGE_MARKDOWN.sub(replace_image, line))
+        # Markdown image syntax inside inline code is an example, not an asset.
+        parts = re.split(r"(`+[^`]*`+)", line)
+        rewritten_lines.append("".join(
+            part if index % 2 else IMAGE_MARKDOWN.sub(replace_image, part)
+            for index, part in enumerate(parts)
+        ))
 
     return "\n".join(rewritten_lines)
 

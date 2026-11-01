@@ -189,14 +189,23 @@ function buildArticleCard(article) {
     card.appendChild(metaLine);
 
     // Preview text joins paragraphs; overflow is clipped by CSS with an ellipsis.
-    var preview = createArticleElement(
-        "div",
-        "article-card-preview",
-        view.content.join("\n")
+    var previewText = view.content.join("\n");
+    if (article.contentFormat === "markdown") {
+        previewText = previewText
             .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")
             .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
             .replace(/^\s{0,3}#{1,6}\s+/gm, "")
-            .replace(/[#*_`>]/g, ""),
+            .replace(/^\s*>\s?/gm, "")
+            .replace(/^\s*(?:[-+*]|\d+[.)])\s+/gm, "")
+            .replace(/^\s*```[^\n]*$/gm, "")
+            .replace(/\*\*([^*]+)\*\*|\*([^*]+)\*|`([^`]+)`/g, function (_, bold, italic, code) {
+                return bold || italic || code;
+            });
+    }
+    var preview = createArticleElement(
+        "div",
+        "article-card-preview",
+        previewText,
     );
     card.appendChild(preview);
 
@@ -342,7 +351,7 @@ function renderMarkdownBlock(markdown, container) {
             code.textContent = codeLines.join("\n");
             pre.appendChild(code); container.appendChild(pre); continue;
         }
-        var heading = line.match(/^\s*(#{1,6})\s+(.+?)\s*#*\s*$/);
+        var heading = line.match(/^\s*(#{1,6})\s+(.+?)(?:\s+#+)?\s*$/);
         if (heading) {
             var h = document.createElement("h" + heading[1].length);
             appendMarkdownInline(h, heading[2]); container.appendChild(h); index += 1; continue;
@@ -362,6 +371,7 @@ function renderMarkdownBlock(markdown, container) {
         if (listMatch) {
             var ordered = Boolean(listMatch[2]);
             var list = document.createElement(ordered ? "ol" : "ul");
+            if (ordered) list.start = Number(listMatch[2]);
             while (index < lines.length) {
                 var item = lines[index].match(/^\s*(?:([-+*])|(\d+)[.)])\s+(.+)$/);
                 if (!item || Boolean(item[2]) !== ordered) break;
@@ -374,6 +384,10 @@ function renderMarkdownBlock(markdown, container) {
             !/^\s*(?:#{1,6}\s|```|>|([-+*]|\d+[.)])\s)/.test(lines[index]) &&
             !/^\s*(---+|___+|\*\*\*+)\s*$/.test(lines[index])) {
             paragraphLines.push(lines[index]); index += 1;
+        }
+        if (paragraphLines.length === 0) {
+            paragraphLines.push(lines[index]);
+            index += 1;
         }
         var paragraph = document.createElement("p");
         appendMarkdownInline(paragraph, paragraphLines.join(" "));
