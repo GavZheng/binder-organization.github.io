@@ -770,6 +770,59 @@ body.menu-open {
     margin-top: 1.25rem;
 }
 
+.article-box-content h1,
+.article-box-content h2,
+.article-box-content h3,
+.article-box-content h4,
+.article-box-content h5,
+.article-box-content h6 {
+    margin: 1.6em 0 0.65em;
+    line-height: 1.35;
+    color: var(--text-color);
+}
+
+.article-box-content ul,
+.article-box-content ol,
+.article-box-content blockquote,
+.article-box-content pre {
+    margin: 1.1em 0;
+}
+
+.article-box-content ul,
+.article-box-content ol {
+    padding-left: 1.6em;
+}
+
+.article-box-content blockquote {
+    padding-left: 1em;
+    border-left: 3px solid var(--text-secondary);
+    color: var(--text-secondary);
+}
+
+.article-box-content pre {
+    overflow-x: auto;
+    padding: 1em;
+    border-radius: 0.5rem;
+    background: color-mix(in srgb, var(--text-color) 7%, transparent);
+    font-size: 0.9em;
+}
+
+.article-box-content code {
+    padding: 0.1em 0.25em;
+    border-radius: 0.25rem;
+    background: color-mix(in srgb, var(--text-color) 7%, transparent);
+}
+
+.article-box-content pre code {
+    padding: 0;
+    background: transparent;
+}
+
+.article-box-content a {
+    color: var(--link-color, #1683d8);
+    text-decoration: underline;
+}
+
 /* footer 在 content 下方、矩形右下角 */
 .article-box-footer {
     margin-top: 4rem;

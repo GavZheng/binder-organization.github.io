@@ -1,389 +1,144 @@
 #!/usr/bin/env python3
-"""Website article converter.
+"""Convert bilingual Markdown articles with YAML-style front matter to site JSON.
 
-Interactively asks for article fields in the terminal and produces a standard
-article JSON file under assets/articles/.
-
-Usage:
-    python3 tools/article_convertor.py
-
-The tool locates the assets/articles directory by walking up from the current
-working directory, so it can be invoked from anywhere inside the repository.
+Usage: python3 tools/article_convertor.py --zh-cn zh-cn.md --en en.md
 """
 
+import argparse
 import json
-import os
 import re
+import subprocess
 import sys
 from datetime import date
 from pathlib import Path
 
-SUPPORTED_VERSION = "v1"
+SUPPORTED_VERSION = "v2"
 ARTICLE_DIR_NAME = "assets/articles"
+FRONT_MATTER_KEYS = {"title", "author", "date", "slug", "header", "footer"}
 
 
-# ---------------------------------------------------------------------------
-# Data structures
-# ---------------------------------------------------------------------------
-
-class LanguageText:
-    """Ordered list of (language_code, [elements]) pairs."""
-
-    def __init__(self):
-        self._entries = []
-
-    def push_language(self, language_code, elements):
-        if elements:
-            self._entries.append((language_code, list(elements)))
-
-    def entries(self):
-        return list(self._entries)
-
-    def is_empty(self):
-        return len(self._entries) == 0
-
-    def last_language(self):
-        return self._entries[-1] if self._entries else None
-
-
-class ArticleBody:
-    """All user-provided fields (except info)."""
-
-    def __init__(self):
-        self.author = LanguageText()
-        self.post_time = LanguageText()
-        self.title = LanguageText()
-        self.header = LanguageText()
-        self.content = LanguageText()
-        self.footer = LanguageText()
-
-    def field_pairs(self):
-        """Yield (name, LanguageText) in JSON key order."""
-        return [
-            ("author", self.author),
-            ("post_time", self.post_time),
-            ("title", self.title),
-            ("header", self.header),
-            ("content", self.content),
-            ("footer", self.footer),
-        ]
-
-
-# ---------------------------------------------------------------------------
-# Terminal helpers
-# ---------------------------------------------------------------------------
-
-def read_line(prompt=""):
-    """Print *prompt*, read one line, strip whitespace.  Raises EOFError on
-    end-of-input so callers can bail instead of spinning forever."""
-    print(prompt, end="", flush=True)
-    line = sys.stdin.readline()
-    if not line:
-        raise EOFError("input ended")
-    return line.rstrip("\n").rstrip("\r")
-
-
-def today_date():
-    """Return YYYY-MM-DD for today, or empty string on failure."""
+def read_markdown(path):
+    text = path.read_text(encoding="utf-8-sig")
+    if not text.startswith("---\n") and not text.startswith("---\r\n"):
+        return {}, text
+    lines = text.splitlines()
     try:
-        return date.today().isoformat()
-    except Exception:
-        return ""
+        end = lines.index("---", 1)
+    except ValueError:
+        raise ValueError(f"{path}: front matter begins with --- but has no closing ---")
+    metadata = {}
+    for number, line in enumerate(lines[1:end], start=2):
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        if ":" not in line:
+            raise ValueError(f"{path}:{number}: expected key: value in front matter")
+        key, value = line.split(":", 1)
+        key, value = key.strip(), value.strip()
+        if key not in FRONT_MATTER_KEYS:
+            raise ValueError(f"{path}:{number}: unsupported front matter key {key!r}")
+        if key in metadata:
+            raise ValueError(f"{path}:{number}: duplicate front matter key {key!r}")
+        # Scalars may be plain, single-quoted, or JSON-style double-quoted strings.
+        if value.startswith('"'):
+            try:
+                value = json.loads(value)
+            except json.JSONDecodeError as error:
+                raise ValueError(f"{path}:{number}: invalid quoted string: {error}")
+        elif len(value) >= 2 and value[0] == value[-1] == "'":
+            value = value[1:-1].replace("''", "'")
+        if not isinstance(value, str):
+            raise ValueError(f"{path}:{number}: front matter values must be strings")
+        metadata[key] = value
+    return metadata, "\n".join(lines[end + 1:]).lstrip("\n")
 
 
-def is_valid_date(text):
-    """Check YYYY-MM-DD format and plausible ranges."""
-    if len(text) != 10 or text[4] != "-" or text[7] != "-":
+def ask_missing(label, value, default=None):
+    if value:
+        return value
+    if not sys.stdin.isatty():
+        raise ValueError(f"Missing required metadata: {label}")
+    suffix = f" [{default}]" if default else ""
+    answer = input(f"{label}{suffix}: ").strip()
+    return answer or (default or "")
+
+
+def valid_date(value):
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
         return False
     try:
-        year, month, day = int(text[:4]), int(text[5:7]), int(text[8:10])
+        date.fromisoformat(value)
+        return True
     except ValueError:
         return False
-    return year > 2000 and 1 <= month <= 12 and 1 <= day <= 31
 
 
-def is_valid_file_name(name, article_dir):
-    """Only lowercase ASCII letters, digits, underscores, hyphens; must not
-    collide with an existing article file."""
-    stem = name.removesuffix(".json")
-    if not stem:
-        return False
-    allowed = set("abcdefghijklmnopqrstuvwxyz0123456789_-")
-    if not all(c in allowed for c in stem):
-        return False
-    if (article_dir / f"{stem}.json").exists():
-        return False
-    return True
+def safe_slug(value):
+    return bool(value) and all(char in "abcdefghijklmnopqrstuvwxyz0123456789_-" for char in value)
 
 
-def discover_article_dir():
-    """Walk up from cwd looking for assets/articles/."""
-    candidate = Path.cwd()
-    while True:
-        target = candidate / ARTICLE_DIR_NAME
-        if target.is_dir():
-            return target
-        parent = candidate.parent
-        if parent == candidate:
-            return None
-        candidate = parent
+def build_article(args, article_dir):
+    zh_path, en_path = Path(args.zh_cn), Path(args.en)
+    zh_meta, zh_body = read_markdown(zh_path)
+    en_meta, en_body = read_markdown(en_path)
 
+    # date and slug are article-wide and belong in the Chinese file only.
+    for key in ("date", "slug"):
+        if key in en_meta:
+            raise ValueError(f"{en_path}: {key} is article-wide metadata; put it in {zh_path}")
+    post_date = ask_missing("Publication date YYYY-MM-DD (zh-CN front matter)", zh_meta.get("date"), date.today().isoformat())
+    if not valid_date(post_date):
+        raise ValueError(f"Invalid publication date {post_date!r}; expected YYYY-MM-DD")
 
-# ---------------------------------------------------------------------------
-# JSON serialisation (hand-rolled to avoid extra dependencies)
-# ---------------------------------------------------------------------------
+    slug = zh_meta.get("slug") or zh_path.stem
+    if not safe_slug(slug):
+        raise ValueError("Slug may contain only lowercase ASCII letters, digits, underscores, and hyphens")
+    target = article_dir / f"{slug}.json"
+    if target.exists():
+        raise ValueError(f"Output already exists: {target}")
 
-def json_escape(text):
-    """Escape a string for inclusion in a JSON double-quoted value."""
-    out = []
-    for ch in text:
-        if ch == '"':
-            out.append('\\"')
-        elif ch == "\\":
-            out.append("\\\\")
-        elif ch == "\n":
-            out.append("\\n")
-        elif ch == "\r":
-            out.append("\\r")
-        elif ch == "\t":
-            out.append("\\t")
-        elif ord(ch) < 0x20:
-            out.append(f"\\u{ord(ch):04x}")
-        else:
-            out.append(ch)
-    return "".join(out)
+    fields = {name: {} for name in ("author", "post_time", "title", "header", "content", "footer")}
+    for language, label, metadata, body in (
+        ("zh-CN", "zh-CN", zh_meta, zh_body),
+        ("en-US", "en-US", en_meta, en_body),
+    ):
+        for field in ("title", "author"):
+            value = ask_missing(f"{label} {field}", metadata.get(field))
+            if not value:
+                raise ValueError(f"{label} {field} cannot be empty")
+            fields[field][language] = [value]
+        fields["post_time"][language] = [post_date if language == "en-US" else post_date.replace("-", ".")]
+        for field in ("header", "footer"):
+            if metadata.get(field):
+                fields[field][language] = [metadata[field]]
+        if not body.strip():
+            raise ValueError(f"{label} Markdown body is empty")
+        fields["content"][language] = [body.strip()]
 
+    result = {"info": [SUPPORTED_VERSION, post_date], "content_format": "markdown"}
+    result.update(fields)
+    target.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print(f"Written: {target}")
+    subprocess.run(
+        [sys.executable, str(Path(__file__).with_name("build_article_index.py"))],
+        check=True,
+    )
+    print("The website renders Markdown in article bodies. Include the article JSON and updated index.json in your PR.")
 
-def json_array(elements, element_indent="      ", closing_indent="    "):
-    """Render a list of strings as a pretty-printed JSON array."""
-    lines = ["[\n"]
-    for i, elem in enumerate(elements):
-        comma = "," if i + 1 < len(elements) else ""
-        lines.append(f'{element_indent}"{json_escape(elem)}"{comma}\n')
-    lines.append(f"{closing_indent}]")
-    return "".join(lines)
-
-
-def json_language_map(lang_text):
-    """Render a LanguageText as {"zh-CN": [...], "en-US": [...]}."""
-    parts = []
-    for code, elements in lang_text.entries():
-        parts.append(f'    "{json_escape(code)}": {json_array(elements)}')
-    return "{\n" + ",\n".join(parts) + "\n  }"
-
-
-def assemble_article_json(info, body):
-    """Produce the full article JSON string."""
-    entries = [f'  "info": ["{json_escape(info["version"])}", "{json_escape(info["date"])}"]']
-    for field_name, field in body.field_pairs():
-        if field.is_empty():
-            continue
-        entries.append(f'  "{field_name}": {json_language_map(field)}')
-    return "{\n" + ",\n".join(entries) + "\n}\n"
-
-
-# ---------------------------------------------------------------------------
-# Sentence splitting
-# ---------------------------------------------------------------------------
-
-SENTENCE_ENDS = set("。！？；.!?;")
-FULLWIDTH_SPACES = {"\u3000", " "}
-
-
-def split_long_text(text):
-    """Split a long line at sentence boundaries.
-
-    Chinese punctuation (。！？；) always triggers a split.
-    Western punctuation (. ! ? ;) only splits when followed by whitespace
-    so that dates like ``2026.8.30`` are not cut apart.
-    Fragments shorter than 8 characters are merged back into the previous
-    sentence (without adding a space when the previous sentence ends with
-    a Chinese full-width mark).
-    """
-    sentences = []
-    current = []
-    chars = list(text)
-    pos = 0
-    while pos < len(chars):
-        ch = chars[pos]
-        current.append(ch)
-        do_split = False
-        if ch in ("。", "！", "？", "；"):
-            do_split = True
-        elif ch in (".", "!", "?", ";"):
-            nxt = chars[pos + 1] if pos + 1 < len(chars) else ""
-            if nxt in FULLWIDTH_SPACES:
-                do_split = True
-        if do_split:
-            sentences.append("".join(current).strip())
-            current = []
-        pos += 1
-    tail = "".join(current).strip()
-    if tail:
-        sentences.append(tail)
-
-    merged = []
-    for sentence in sentences:
-        if len(sentence) < 8 and merged:
-            prev = merged[-1]
-            if not prev or prev[-1] in ("。", "！", "？", "；"):
-                merged[-1] = prev + sentence
-            else:
-                merged[-1] = prev + " " + sentence
-        else:
-            merged.append(sentence)
-    return merged
-
-
-def split_into_elements(lines):
-    """Apply the paragraph-to-elements rules."""
-    elements = []
-    for line in lines:
-        stripped = line.strip()
-        if not stripped:
-            continue
-        term_count = sum(1 for ch in stripped if ch in SENTENCE_ENDS)
-        if len(stripped) > 40 and term_count >= 2:
-            elements.extend(split_long_text(stripped))
-        else:
-            elements.append(stripped)
-    return elements
-
-
-# ---------------------------------------------------------------------------
-# Interactive prompts
-# ---------------------------------------------------------------------------
-
-def ask_file_name(article_dir):
-    """Ask for a filename; default is a date-time stamp."""
-    try:
-        import subprocess
-        suggested = subprocess.check_output(
-            ["date", "+article_%Y%m%d_%H%M%S"], text=True
-        ).strip()
-    except Exception:
-        suggested = "article_new"
-
-    while True:
-        entered = read_line(
-            f"\nArticle file name (lowercase letters, digits, underscore, "
-            f"hyphen; press Enter to use {suggested}, q to quit): "
-        )
-        if entered.lower() == "q":
-            sys.exit("Aborted by user.")
-        name = entered if entered else suggested
-        stem = name.removesuffix(".json")
-        if is_valid_file_name(stem, article_dir):
-            return stem
-        print("  Invalid name: only lowercase ASCII letters, digits, "
-              "underscore, hyphen allowed; must not overwrite an existing article.")
-
-
-def ask_article_info():
-    """Ask for the publication date; version is always v1."""
-    default = today_date()
-    if is_valid_date(default):
-        entered = read_line(
-            f"Publication date (press Enter for today {default}): "
-        )
-        post_date = entered if entered else default
-    else:
-        post_date = read_line("Publication date (YYYY-MM-DD): ")
-
-    while not is_valid_date(post_date):
-        print("  Bad date format, expected something like 2026-08-30.")
-        post_date = read_line("Publication date (YYYY-MM-DD): ")
-
-    return {"version": SUPPORTED_VERSION, "date": post_date}
-
-
-def ask_language_text(field_name, hint):
-    """Ask for a multilingual field.  Each language is collected line-by-line.
-
-    A line containing only ``#`` ends the current language block.
-    A line containing only ``=`` copies the previous language's content.
-    """
-    collected = LanguageText()
-    print()
-    print(f"  [{field_name}]  {hint}")
-
-    for lang_code in ("zh-CN", "en-US"):
-        reuse = ""
-        prev = collected.last_language()
-        if prev:
-            reuse = f", type = to reuse {prev[0]}"
-        print(f"  {lang_code} (enter lines, single # to finish{reuse}):")
-
-        lines = []
-        while True:
-            line = read_line("    > ")
-            if line == "#":
-                break
-            if line == "=" and prev:
-                collected.push_language(lang_code, prev[1])
-                break
-            if line:
-                lines.append(line)
-        else:
-            # stdin closed
-            pass
-
-        if lines and not (line == "=" and prev):
-            collected.push_language(lang_code, split_into_elements(lines))
-
-    if collected.is_empty():
-        print("    (both languages empty — field will be omitted)")
-    return collected
-
-
-def collect_article_body():
-    """Interactively collect all article fields."""
-    body = ArticleBody()
-    body.author = ask_language_text("author", "Author, displayed below the title")
-    body.post_time = ask_language_text("post_time", "Display publication time, next to author")
-    body.title = ask_language_text("title", "Title, shown at the top of the page")
-    body.header = ask_language_text("header", "Placed at the top-left of the article")
-    body.content = ask_language_text("content", "Body text, displayed in the middle")
-    body.footer = ask_language_text("footer", "Placed below the body, bottom-right")
-    return body
-
-
-# ---------------------------------------------------------------------------
-# Entry point
-# ---------------------------------------------------------------------------
 
 def main():
-    print("Website article converter — interactively produces an article JSON file.")
-    print("Splitting rule: each line is one element; lines longer than 40 chars with")
-    print("two or more sentence-ending marks are automatically split at those marks.")
-    print()
-
-    article_dir = discover_article_dir()
-    if article_dir is None:
-        sys.exit("Cannot find assets/articles/ — please run from inside the repository.")
-
-    print(f"Article directory: {article_dir}")
-
-    file_name = ask_file_name(article_dir)
-    info = ask_article_info()
-    body = collect_article_body()
-
-    json_text = assemble_article_json(info, body)
-
-    print("\n──── Generated JSON ────")
-    print(json_text)
-
-    confirm = read_line("Write to disk? (y to confirm, anything else to abort): ")
-    if confirm.lower() != "y":
-        print("Aborted.  You can copy the JSON above manually.")
-        return
-
-    target = article_dir / f"{file_name}.json"
-    target.write_text(json_text, encoding="utf-8")
-    print(f"Written: {target}")
-    print("Next step: run  python3 tools/build_article_index.py  to update the manifest,")
-    print("or push to GitHub and let the articles-index.yml workflow do it automatically.")
+    parser = argparse.ArgumentParser(description="Convert bilingual Markdown articles to website JSON")
+    parser.add_argument("--zh-cn", "--zhcn", dest="zh_cn", required=True, help="Chinese Markdown file")
+    parser.add_argument("--en", required=True, help="English Markdown file")
+    args = parser.parse_args()
+    try:
+        root = Path(__file__).resolve().parent.parent
+        article_dir = root / ARTICLE_DIR_NAME
+        build_article(args, article_dir)
+    except (OSError, ValueError) as error:
+        print(f"Error: {error}", file=sys.stderr)
+        return 1
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

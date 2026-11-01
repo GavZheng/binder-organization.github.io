@@ -50,12 +50,24 @@ This website serves as the official Binder platform, handling both promotion and
 
 ### Publishing Workflow
 
-1. Write your article locally using any method you prefer.
-2. Run `python3 tools/article_convertor.py` and follow the prompts to convert your article to JSON.
-   - Note: after conversion you need to fork this repository and open a PR. We recommend running a local HTTP server to preview the article before submitting.
-3. Place your article under the `assets/articles` directory and submit a PR.
-4. Once reviewed and merged, GitHub Actions will automatically rebuild the index and deploy.
-5. Your article will then appear on the official website's article page.
+1. Create separate Chinese and English Markdown files, for example `zh-cn.md` and `en.md`. Both can start with YAML front matter:
+
+```markdown
+---
+title: Binder feature release
+author: Jane Doe
+date: 2026-11-01
+slug: binder_news_20261101
+---
+
+Write the article body in Markdown.
+```
+
+Set localized `title` and `author` in each file. `date` is required article-wide metadata and belongs only in the Chinese file; `slug` is optional and defaults to the Chinese filename. `header` and `footer` are optional. The converter asks for missing title, author, or date in interactive mode, and reports missing values in non-interactive mode. The date also supplies the displayed publication time in both languages.
+2. Run `python3 tools/article_convertor.py --zh-cn zh-cn.md --en en.md`. `--zhcn` is also accepted as a short alias. The converter writes the website JSON file to `assets/articles/` and updates the article index.
+3. Review the generated JSON and preview locally. Article Markdown supports headings, paragraphs, bold, italics, inline and fenced code, links, blockquotes, ordered and unordered lists, and horizontal rules. Raw HTML is displayed as text. Images are not supported yet.
+4. Fork the official repository and open a PR containing the generated article JSON and updated `assets/articles/index.json`. Do not include the Markdown source files.
+5. Once reviewed and merged, GitHub Actions updates the index and deploys the article page.
 
 ### Guidelines
 

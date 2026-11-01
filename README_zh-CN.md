@@ -50,12 +50,25 @@
 
 ### 发表流程
 
-1. 在本地用你习惯的方式写好一篇文章。
-2. 调用`python3 tools/article_convertor.py`，按照提示将文章转换为json格式。
-  - 请注意，完成转换后，你需要fork官网并提出pr。我们建议你自己在本地开一个网站服务器来预览文章显示效果。
-3. 将你的文章放置在assets/articles目录下，提出pr。
-4. 审核通过后，由github actions自动重新处理索引并部署。
-5. 之后，你就可以在官网的文章页面看到你的文章。
+1. 分别创建中文和英文 Markdown 文件，例如`zh-cn.md`和`en.md`。两份文件都可以在开头写 YAML Front Matter：
+
+```markdown
+---
+title: 必达新功能发布
+author: 张三
+date: 2026-11-01
+slug: binder_news_20261101
+---
+
+正文使用 Markdown 编写。
+```
+
+`title`和`author`按语言分别填写；`date`为必填文章级字段，仅放在中文文件中；`slug`可选，默认取中文文件名。`header`和`footer`可选。缺少标题、作者或日期时，转换器会交互询问；在非交互环境运行时会报告缺少项。日期同时用于生成中英文显示时间。
+
+2. 运行`python3 tools/article_convertor.py --zh-cn zh-cn.md --en en.md`。也支持`--zhcn`作为`--zh-cn`的简写。转换器会在`assets/articles/`生成网站使用的 JSON 文件，并更新文章索引。
+3. 检查生成的 JSON，并在本地预览。Markdown 正文支持标题、段落、粗体、斜体、行内代码、代码块、链接、引用、无序和有序列表及分隔线；原始 HTML 会作为普通文本显示。图片暂不支持。
+4. Fork 官网并提出 PR，提交生成的文章 JSON 和更新后的`assets/articles/index.json`。不要把 Markdown 源文件加入 PR。
+5. 审核通过后，由 GitHub Actions 自动更新索引并部署，文章随后会出现在官网文章页面。
 
 ### 注意事项
 
