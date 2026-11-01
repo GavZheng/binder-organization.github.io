@@ -9,6 +9,7 @@
 | `js/script.js`, `js/i18n.js` | Navigation, preferences, and interface translations |
 | `js/article-loader.js` | Article manifest loading, language selection, and safe Markdown rendering |
 | `assets/articles/*.json` | Published article data |
+| `assets/articles/*.{png,jpg,jpeg,gif,webp,avif}` | Images copied from article Markdown sources |
 | `assets/articles/index.json` | Manifest listing article JSON files in display order |
 | `tools/article_convertor.py` | Converts bilingual Markdown sources to article JSON |
 | `tools/build_article_index.py` | Rebuilds the article manifest from article JSON files |

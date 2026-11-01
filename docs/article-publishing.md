@@ -45,9 +45,22 @@ The article page renders this subset:
 - Bold (`**text**`), italics (`*text*`), and inline code (`` `code` ``)
 - Fenced code blocks
 - Links in the form `[label](https://example.com)`; `https:`, `http:`, `mailto:`, root-relative (`/path`) and page-fragment (`#section`) targets are allowed
+- Images using `![description](image.png)`
 - Blockquotes, ordered and unordered lists, and horizontal rules
 
-Raw HTML is displayed as text. Images, tables, task lists, strikethrough, reference-style links, and HTML formatting are not supported. Keep paragraphs separated with a blank line; Markdown line breaks inside a paragraph are treated as spaces.
+Raw HTML is displayed as text. Tables, task lists, strikethrough, reference-style links, and HTML formatting are not supported. Keep paragraphs separated with a blank line; Markdown line breaks inside a paragraph are treated as spaces.
+
+### Add images
+
+Put local image files next to the Markdown file that uses them, then reference them with a relative path:
+
+```markdown
+![A screenshot of the app](images/screenshot.png)
+```
+
+The converter resolves a relative image path from the directory containing the Markdown file. For example, `images/screenshot.png` points to a child `images` directory, while `../shared/screenshot.png` points to a sibling directory. If that file is not found, interactive conversion prompts for its actual path; an entered relative path is resolved from the directory where the converter was run, and an absolute path is accepted. In non-interactive mode, a missing file is an error.
+
+The converter copies local images into `assets/articles/` and rewrites the Markdown URL in the generated JSON. Local images must use PNG, JPG/JPEG, GIF, WebP, or AVIF. Use a path without spaces or parentheses. HTTPS image URLs and existing `/assets/images/` or `/assets/articles/` paths are also supported. Do not use `http:`, `data:`, or `file:` image URLs. Include the copied image files in the pull request with the article JSON and index; do not include the source Markdown files. Use images you have permission to publish.
 
 ## 4. Preview locally
 
@@ -63,7 +76,7 @@ Check the title, author, date, links, Markdown layout, and language switching. A
 
 ## 5. Submit the pull request
 
-Fork the official repository, add the generated article JSON under `assets/articles/`, and include the updated `assets/articles/index.json`. Do not include the Markdown source files or unrelated changes. The pull request workflow rebuilds the index and fails if the committed index is out of date. After review and merge, the default-branch workflow updates the index and deploys the site.
+Fork the official repository, add the generated article JSON and copied images under `assets/articles/`, and include the updated `assets/articles/index.json`. Do not include the Markdown source files or unrelated changes. The pull request workflow rebuilds the index and fails if the committed index is out of date. After review and merge, the default-branch workflow updates the index and deploys the site.
 
 ### Editorial requirements
 

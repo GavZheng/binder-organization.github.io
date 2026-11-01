@@ -9,6 +9,7 @@
 | `js/script.js`、`js/i18n.js` | 导航、偏好设置和界面翻译 |
 | `js/article-loader.js` | 加载文章索引、语言切换和安全的 Markdown 渲染 |
 | `assets/articles/*.json` | 已发布文章数据 |
+| `assets/articles/*.{png,jpg,jpeg,gif,webp,avif}` | 从投稿 Markdown 源稿复制过来的图片 |
 | `assets/articles/index.json` | 文章 JSON 文件清单及显示顺序 |
 | `tools/article_convertor.py` | 将双语 Markdown 源稿转换为文章 JSON |
 | `tools/build_article_index.py` | 根据文章 JSON 重建文章清单 |

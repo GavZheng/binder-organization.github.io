@@ -7,14 +7,18 @@ Usage: python3 tools/article_convertor.py --zh-cn zh-cn.md --en en.md
 import argparse
 import json
 import re
+import shutil
 import subprocess
 import sys
 from datetime import date
 from pathlib import Path
+from urllib.parse import unquote, urlsplit
 
 SUPPORTED_VERSION = "v2"
 ARTICLE_DIR_NAME = "assets/articles"
 FRONT_MATTER_KEYS = {"title", "author", "date", "slug", "header", "footer"}
+IMAGE_MARKDOWN = re.compile(r"!\[([^\]]*)\]\(([^)\s]+)\)")
+SUPPORTED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif"}
 
 
 def read_markdown(path):
@@ -76,6 +80,87 @@ def safe_slug(value):
     return bool(value) and all(char in "abcdefghijklmnopqrstuvwxyz0123456789_-" for char in value)
 
 
+def ask_for_image_path(image_url, source_path):
+    if not sys.stdin.isatty():
+        raise ValueError(
+            f"Image not found: {image_url!r} (relative to {source_path.parent}). "
+            "Run interactively to enter the image file path."
+        )
+
+    while True:
+        entered = input(
+            f"Image {image_url!r} was not found relative to {source_path.parent}. "
+            "Enter its file path (relative to the current directory or absolute; blank to cancel): "
+        ).strip()
+        if not entered:
+            raise ValueError(f"No file path supplied for image {image_url!r}")
+        candidate = Path(entered).expanduser()
+        if not candidate.is_absolute():
+            candidate = Path.cwd() / candidate
+        try:
+            candidate = candidate.resolve()
+        except (OSError, RuntimeError):
+            candidate = None
+        if candidate is not None and candidate.is_file():
+            return candidate
+        print("  File not found. Enter a valid image file path, or leave blank to cancel.")
+
+
+def rewrite_markdown_images(markdown, source_path, article_dir, slug, language, copy_jobs):
+    """Copy local Markdown images beside the generated article and rewrite their URLs."""
+    source_root = source_path.resolve().parent
+    image_names = {}
+    resolved_paths = {}
+    image_number = 0
+    rewritten_lines = []
+    inside_fence = False
+
+    for line in markdown.splitlines():
+        if re.match(r"^\s*```", line):
+            inside_fence = not inside_fence
+            rewritten_lines.append(line)
+            continue
+        if inside_fence:
+            rewritten_lines.append(line)
+            continue
+
+        def replace_image(match):
+            nonlocal image_number
+            alt_text, image_url = match.groups()
+            parsed_url = urlsplit(image_url)
+            if parsed_url.scheme == "https" and parsed_url.netloc:
+                return match.group(0)
+            if re.match(r"^/?assets/(?:articles|images)/", image_url):
+                return match.group(0)
+            if parsed_url.scheme or parsed_url.netloc or image_url.startswith("/") or parsed_url.query or parsed_url.fragment:
+                raise ValueError(f"Unsupported local image path {image_url!r} in {source_path}")
+
+            source_reference = unquote(parsed_url.path)
+            if source_reference not in resolved_paths:
+                image_path = (source_root / source_reference).resolve()
+                if not image_path.is_file():
+                    image_path = ask_for_image_path(image_url, source_path)
+                resolved_paths[source_reference] = image_path
+            image_path = resolved_paths[source_reference]
+            extension = image_path.suffix.lower()
+            if extension not in SUPPORTED_IMAGE_EXTENSIONS:
+                allowed = ", ".join(sorted(SUPPORTED_IMAGE_EXTENSIONS))
+                raise ValueError(f"Unsupported image format {extension or '(no extension)'!r}; use: {allowed}")
+
+            key = str(image_path)
+            if key not in image_names:
+                image_number += 1
+                file_name = f"{slug}_{language}_{image_number:02d}{extension}"
+                destination = article_dir / file_name
+                image_names[key] = file_name
+                copy_jobs.append((image_path, destination))
+            return f"![{alt_text}](assets/articles/{image_names[key]})"
+
+        rewritten_lines.append(IMAGE_MARKDOWN.sub(replace_image, line))
+
+    return "\n".join(rewritten_lines)
+
+
 def build_article(args, article_dir):
     zh_path, en_path = Path(args.zh_cn), Path(args.en)
     zh_meta, zh_body = read_markdown(zh_path)
@@ -97,6 +182,7 @@ def build_article(args, article_dir):
         raise ValueError(f"Output already exists: {target}")
 
     fields = {name: {} for name in ("author", "post_time", "title", "header", "content", "footer")}
+    image_copy_jobs = []
     for language, label, metadata, body in (
         ("zh-CN", "zh-CN", zh_meta, zh_body),
         ("en-US", "en-US", en_meta, en_body),
@@ -112,7 +198,14 @@ def build_article(args, article_dir):
                 fields[field][language] = [metadata[field]]
         if not body.strip():
             raise ValueError(f"{label} Markdown body is empty")
+        body = rewrite_markdown_images(body, Path(args.zh_cn if language == "zh-CN" else args.en), article_dir, slug, "zh" if language == "zh-CN" else "en", image_copy_jobs)
         fields["content"][language] = [body.strip()]
+
+    for _, destination in image_copy_jobs:
+        if destination.exists():
+            raise ValueError(f"Article image output already exists: {destination}")
+    for source, destination in image_copy_jobs:
+        shutil.copyfile(source, destination)
 
     result = {"info": [SUPPORTED_VERSION, post_date], "content_format": "markdown"}
     result.update(fields)
@@ -122,7 +215,7 @@ def build_article(args, article_dir):
         [sys.executable, str(Path(__file__).with_name("build_article_index.py"))],
         check=True,
     )
-    print("The website renders Markdown in article bodies. Include the article JSON and updated index.json in your PR.")
+    print("The website renders Markdown in article bodies. Include the article JSON, copied images, and updated index.json in your PR.")
 
 
 def main():

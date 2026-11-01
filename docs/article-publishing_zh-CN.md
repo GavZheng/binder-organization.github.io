@@ -45,9 +45,22 @@ python3 tools/article_convertor.py --zh-cn /path/to/zh-cn.md --en /path/to/en.md
 - 粗体（`**文字**`）、斜体（`*文字*`）和行内代码（`` `代码` ``）
 - 围栏代码块
 - `[链接文字](https://example.com)` 格式的链接；允许 `http:`、`https:`、`mailto:`、根路径（`/path`）和页面锚点（`#section`）
+- `![说明文字](image.png)` 格式的图片
 - 引用、有序列表、无序列表和分隔线
 
-原始 HTML 会显示成普通文本。暂不支持图片、表格、任务列表、删除线、引用式链接和 HTML 排版。段落之间请留空行；同一段中的换行会按空格处理。
+原始 HTML 会显示成普通文本。暂不支持表格、任务列表、删除线、引用式链接和 HTML 排版。段落之间请留空行；同一段中的换行会按空格处理。
+
+### 添加图片
+
+把本地图片放在使用它的 Markdown 文件旁边，再用相对路径引用：
+
+```markdown
+![应用截图](images/screenshot.png)
+```
+
+转换器会从 Markdown 文件所在目录解析相对图片路径。例如 `images/screenshot.png` 指向同目录下的 `images` 子目录；`../shared/screenshot.png` 指向上一级目录中的 `shared` 子目录。如果相对路径找不到图片，交互运行时会询问图片的实际路径；手动输入的相对路径按运行转换器时的当前目录解析，也可以输入绝对路径。非交互运行时，找不到图片会报错。
+
+转换器会把本地图片复制到 `assets/articles/`，并改写生成 JSON 中的 Markdown 图片路径。本地图片格式限 PNG、JPG/JPEG、GIF、WebP、AVIF；路径不能包含空格或括号。也支持 HTTPS 图片链接和已有的 `/assets/images/`、`/assets/articles/` 站内路径；不支持 `http:`、`data:`、`file:` 图片地址。PR 中要同时提交复制后的图片、文章 JSON 和索引，不要提交 Markdown 源稿。请确认拥有发布图片的权利。
 
 ## 4. 本地预览
 
@@ -63,7 +76,7 @@ python3 -m http.server 8000
 
 ## 5. 提交 PR
 
-Fork 官网仓库，把生成的文章 JSON 放入 `assets/articles/`，并提交更新后的 `assets/articles/index.json`。不要提交 Markdown 源稿或无关改动。PR 工作流会重新生成索引，并在提交的索引过期时失败。审核合并后，默认分支上的工作流会更新索引并部署网站。
+Fork 官网仓库，把生成的文章 JSON 和复制后的图片放入 `assets/articles/`，并提交更新后的 `assets/articles/index.json`。不要提交 Markdown 源稿或无关改动。PR 工作流会重新生成索引，并在提交的索引过期时失败。审核合并后，默认分支上的工作流会更新索引并部署网站。
 
 ### 内容要求
 

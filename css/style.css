@@ -823,6 +823,14 @@ body.menu-open {
     text-decoration: underline;
 }
 
+.article-box-content img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: 1rem auto;
+    border-radius: 0.5rem;
+}
+
 /* footer 在 content 下方、矩形右下角 */
 .article-box-footer {
     margin-top: 4rem;

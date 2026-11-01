@@ -193,6 +193,7 @@ function buildArticleCard(article) {
         "div",
         "article-card-preview",
         view.content.join("\n")
+            .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")
             .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
             .replace(/^\s{0,3}#{1,6}\s+/gm, "")
             .replace(/[#*_`>]/g, ""),
@@ -272,7 +273,7 @@ function renderArticleReading(article) {
 // Render a deliberately small, safe Markdown subset using DOM APIs and text nodes.
 // Raw HTML is always displayed as text; links are restricted to non-script schemes.
 function appendMarkdownInline(parent, text) {
-    var pattern = /(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|\[[^\]]+\]\([^)]+\))/g;
+    var pattern = /(!\[[^\]]*\]\([^)]+\)|\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|\[[^\]]+\]\([^)]+\))/g;
     var position = 0;
     var match;
     while ((match = pattern.exec(text)) !== null) {
@@ -281,7 +282,19 @@ function appendMarkdownInline(parent, text) {
         }
         var token = match[0];
         var node;
-        if (token.slice(0, 2) === "**") {
+        if (token.slice(0, 2) === "![") {
+            var image = token.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
+            var imageUrl = image[2].trim();
+            if (/^https:\/\//i.test(imageUrl) || /^\/?assets\/(?:articles|images)\//i.test(imageUrl)) {
+                node = document.createElement("img");
+                node.src = imageUrl;
+                node.alt = image[1];
+                node.loading = "lazy";
+                node.decoding = "async";
+            } else {
+                node = document.createTextNode(image[1]);
+            }
+        } else if (token.slice(0, 2) === "**") {
             node = document.createElement("strong");
             appendMarkdownInline(node, token.slice(2, -2));
         } else if (token.charAt(0) === "*") {
