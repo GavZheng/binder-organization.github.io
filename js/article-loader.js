@@ -4,7 +4,7 @@
 // a reading view.  Fetching happens once; subsequent language switches only re-render.
 //
 // Article JSON contract (matches assets/articles/migration_notice.json):
-//   info      : ["v1", "2026-08-30"] — loader version and language-free publish date
+//   info      : ["v1" | "v2", "2026-08-30"] — loader version and publish date
 //   author / post_time / title / header / content / footer : each is a language map,
 //              language code -> list of string elements (multiple elements = line breaks)
 //
@@ -15,7 +15,7 @@
 
 var articleDirectory = "assets/articles";
 var articleManifestFileName = "index.json";
-var supportedArticleVersion = "v1";
+var supportedArticleVersions = ["v1", "v2"];
 var loadedArticleList = [];
 var articleLoadFailed = false;
 var articleLoadingStarted = false;
@@ -63,7 +63,7 @@ function parseArticleFile(fileName, rawJson) {
     var informationFields = rawJson.info instanceof Array ? rawJson.info : [];
     var articleFields = {};
     Object.keys(rawJson).forEach(function (fieldName) {
-        if (fieldName !== "info") {
+        if (fieldName !== "info" && fieldName !== "content_format") {
             articleFields[fieldName] = rawJson[fieldName];
         }
     });
@@ -71,6 +71,7 @@ function parseArticleFile(fileName, rawJson) {
         id: fileName.replace(/\.json$/, ""),
         loaderVersion: informationFields[0] === undefined ? "" : informationFields[0],
         postDate: informationFields[1] === undefined ? "" : informationFields[1],
+        contentFormat: rawJson.content_format || "plain",
         texts: articleFields,
     };
 }
@@ -122,11 +123,11 @@ function loadArticleCollection() {
                     return fetchArticleJson(articleDirectory + "/" + fileName)
                         .then(function (rawJson) {
                             var article = parseArticleFile(fileName, rawJson);
-                            if (article.loaderVersion !== supportedArticleVersion) {
+                            if (supportedArticleVersions.indexOf(article.loaderVersion) === -1) {
                                 console.warn(
                                     "跳过文章 " + fileName + "：加载器版本 " +
                                     article.loaderVersion + " 与当前 " +
-                                    supportedArticleVersion + " 不匹配",
+                                    supportedArticleVersions.join("/") + " 不匹配",
                                 );
                                 return null;
                             }
@@ -188,10 +189,23 @@ function buildArticleCard(article) {
     card.appendChild(metaLine);
 
     // Preview text joins paragraphs; overflow is clipped by CSS with an ellipsis.
+    var previewText = view.content.join("\n");
+    if (article.contentFormat === "markdown") {
+        previewText = previewText
+            .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")
+            .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+            .replace(/^\s{0,3}#{1,6}\s+/gm, "")
+            .replace(/^\s*>\s?/gm, "")
+            .replace(/^\s*(?:[-+*]|\d+[.)])\s+/gm, "")
+            .replace(/^\s*```[^\n]*$/gm, "")
+            .replace(/\*\*([^*]+)\*\*|\*([^*]+)\*|`([^`]+)`/g, function (_, bold, italic, code) {
+                return bold || italic || code;
+            });
+    }
     var preview = createArticleElement(
         "div",
         "article-card-preview",
-        view.content.join("\n"),
+        previewText,
     );
     card.appendChild(preview);
 
@@ -250,7 +264,11 @@ function renderArticleReading(article) {
 
     var contentBlock = createArticleElement("div", "article-box-content");
     view.content.forEach(function (paragraph) {
-        contentBlock.appendChild(createArticleElement("p", "", paragraph));
+        if (article.contentFormat === "markdown") {
+            renderMarkdownBlock(paragraph, contentBlock);
+        } else {
+            contentBlock.appendChild(createArticleElement("p", "", paragraph));
+        }
     });
     articleBox.appendChild(contentBlock);
 
@@ -259,6 +277,122 @@ function renderArticleReading(article) {
         footerBlock.appendChild(createArticleElement("p", "", line));
     });
     articleBox.appendChild(footerBlock);
+}
+
+// Render a deliberately small, safe Markdown subset using DOM APIs and text nodes.
+// Raw HTML is always displayed as text; links are restricted to non-script schemes.
+function appendMarkdownInline(parent, text) {
+    var pattern = /(!\[[^\]]*\]\([^)]+\)|\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|\[[^\]]+\]\([^)]+\))/g;
+    var position = 0;
+    var match;
+    while ((match = pattern.exec(text)) !== null) {
+        if (match.index > position) {
+            parent.appendChild(document.createTextNode(text.slice(position, match.index)));
+        }
+        var token = match[0];
+        var node;
+        if (token.slice(0, 2) === "![") {
+            var image = token.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
+            var imageUrl = image[2].trim();
+            if (/^https:\/\//i.test(imageUrl) || /^\/?assets\/(?:articles|images)\//i.test(imageUrl)) {
+                node = document.createElement("img");
+                node.src = imageUrl;
+                node.alt = image[1];
+                node.loading = "lazy";
+                node.decoding = "async";
+            } else {
+                node = document.createTextNode(image[1]);
+            }
+        } else if (token.slice(0, 2) === "**") {
+            node = document.createElement("strong");
+            appendMarkdownInline(node, token.slice(2, -2));
+        } else if (token.charAt(0) === "*") {
+            node = document.createElement("em");
+            appendMarkdownInline(node, token.slice(1, -1));
+        } else if (token.charAt(0) === "`") {
+            node = document.createElement("code");
+            node.textContent = token.slice(1, -1);
+        } else {
+            var link = token.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+            var href = link[2].trim();
+            if (/^(https?:|mailto:|\/|#)/i.test(href)) {
+                node = document.createElement("a");
+                node.href = href;
+                node.rel = "noopener noreferrer";
+                appendMarkdownInline(node, link[1]);
+            } else {
+                node = document.createTextNode(link[1]);
+            }
+        }
+        parent.appendChild(node);
+        position = pattern.lastIndex;
+    }
+    if (position < text.length) {
+        parent.appendChild(document.createTextNode(text.slice(position)));
+    }
+}
+
+function renderMarkdownBlock(markdown, container) {
+    var lines = markdown.replace(/\r\n?/g, "\n").split("\n");
+    var index = 0;
+    while (index < lines.length) {
+        var line = lines[index];
+        if (!line.trim()) { index += 1; continue; }
+        var fence = line.match(/^\s*```/);
+        if (fence) {
+            var codeLines = [];
+            index += 1;
+            while (index < lines.length && !/^\s*```/.test(lines[index])) {
+                codeLines.push(lines[index]); index += 1;
+            }
+            if (index < lines.length) index += 1;
+            var pre = document.createElement("pre");
+            var code = document.createElement("code");
+            code.textContent = codeLines.join("\n");
+            pre.appendChild(code); container.appendChild(pre); continue;
+        }
+        var heading = line.match(/^\s*(#{1,6})\s+(.+?)(?:\s+#+)?\s*$/);
+        if (heading) {
+            var h = document.createElement("h" + heading[1].length);
+            appendMarkdownInline(h, heading[2]); container.appendChild(h); index += 1; continue;
+        }
+        if (/^\s*(---+|___+|\*\*\*+)\s*$/.test(line)) {
+            container.appendChild(document.createElement("hr")); index += 1; continue;
+        }
+        if (/^\s*>/.test(line)) {
+            var quoteLines = [];
+            while (index < lines.length && /^\s*>/.test(lines[index])) {
+                quoteLines.push(lines[index].replace(/^\s*>\s?/, "")); index += 1;
+            }
+            var quote = document.createElement("blockquote");
+            renderMarkdownBlock(quoteLines.join("\n"), quote); container.appendChild(quote); continue;
+        }
+        var listMatch = line.match(/^\s*(?:([-+*])|(\d+)[.)])\s+(.+)$/);
+        if (listMatch) {
+            var ordered = Boolean(listMatch[2]);
+            var list = document.createElement(ordered ? "ol" : "ul");
+            if (ordered) list.start = Number(listMatch[2]);
+            while (index < lines.length) {
+                var item = lines[index].match(/^\s*(?:([-+*])|(\d+)[.)])\s+(.+)$/);
+                if (!item || Boolean(item[2]) !== ordered) break;
+                var li = document.createElement("li"); appendMarkdownInline(li, item[3]); list.appendChild(li); index += 1;
+            }
+            container.appendChild(list); continue;
+        }
+        var paragraphLines = [];
+        while (index < lines.length && lines[index].trim() &&
+            !/^\s*(?:#{1,6}\s|```|>|([-+*]|\d+[.)])\s)/.test(lines[index]) &&
+            !/^\s*(---+|___+|\*\*\*+)\s*$/.test(lines[index])) {
+            paragraphLines.push(lines[index]); index += 1;
+        }
+        if (paragraphLines.length === 0) {
+            paragraphLines.push(lines[index]);
+            index += 1;
+        }
+        var paragraph = document.createElement("p");
+        appendMarkdownInline(paragraph, paragraphLines.join(" "));
+        container.appendChild(paragraph);
+    }
 }
 
 // The ?id= query parameter determines whether to show the list or reading view.

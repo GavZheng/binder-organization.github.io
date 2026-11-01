@@ -28,7 +28,7 @@ def readArticleFile(articlePath):
 
     informationFields = rawJson.get("info")
     if not isinstance(informationFields, list) or len(informationFields) < 2:
-        raise ValueError('missing info field (expected ["v1", "2026-08-30"])')
+        raise ValueError('missing info field (expected ["v1" or "v2", "2026-08-30"])')
 
     loaderVersion = informationFields[0]
     postDate = informationFields[1]

@@ -16,6 +16,7 @@ English | [简体中文](README_zh-CN.md)
 - [Changelog](#changelog)
 - [Overview](#overview)
 - [How to Publish an Article](#how-to-publish-an-article)
+- [Documentation](docs/README.md)
 - [License](#license)
 - [Closing](#closing)
 
@@ -48,37 +49,19 @@ This website serves as the official Binder platform, handling both promotion and
 
 ## How to Publish an Article
 
-### Publishing Workflow
+The short workflow is: write Chinese and English Markdown files, convert them to article JSON, preview locally, and submit the generated JSON plus the updated manifest under `assets/articles/`. See the [detailed publishing guide](docs/article-publishing.md) for the front matter format, supported Markdown, local preview instructions, and editorial requirements.
 
-1. Write your article locally using any method you prefer.
-2. Run `python3 tools/article_convertor.py` and follow the prompts to convert your article to JSON.
-   - Note: after conversion you need to fork this repository and open a PR. We recommend running a local HTTP server to preview the article before submitting.
-3. Place your article under the `assets/articles` directory and submit a PR.
-4. Once reviewed and merged, GitHub Actions will automatically rebuild the index and deploy.
-5. Your article will then appear on the official website's article page.
+## Documentation
 
-### Guidelines
-
-Your PR must meet the following requirements to be approved:
-- The article must include both Chinese and English versions.
-- The article must not contain formatting errors (e.g. broken lines, stray symbols).
-- The article must not plagiarize existing content on the website.
-- The article content should be related to Binder.
-- The submission timestamp should match the actual publication date.
-- The article must not impersonate another person.
-- The article must be distributed under the `CC BY` license.
-- The submission must not include unrelated files (e.g. `__pycache__`, `AGENTS.md`, etc.).
-- Submissions must follow safe and open principles; exploiting vulnerabilities is strictly prohibited.
-- Changes must be limited to the `assets/articles` directory; other parts of the repository must not be modified.
-- Any other behaviour detrimental to article distribution.
-
-Don't worry — you are free to express your opinions. We will not reject a merge just because of criticism.
+- [Article publishing guide](docs/article-publishing.md)
+- [Develop and preview the website](docs/development.md)
+- [Documentation index](docs/README.md)
 
 ---
 
 ## License
 
-[Apache v2](../../LICENSE), Copyright 2026 ChepleBob.
+[Apache v2](LICENSE), Copyright 2026 ChepleBob.
 
 ---
 
